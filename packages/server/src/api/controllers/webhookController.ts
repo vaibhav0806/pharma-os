@@ -109,25 +109,71 @@ export async function handleIncomingMessage(req: Request, res: Response) {
       }
     }
 
-    // Check if customer is replying with their address (for delivery)
-    // Address typically has: numbers, commas, pincode pattern
-    const looksLikeAddress = /\d{6}|\d+.*,|flat|house|street|road|sector|block|near/i.test(Body);
-    if (looksLikeAddress && Body.length > 20) {
-      // Check if there's a ready_for_pickup order waiting for address
-      const orderNeedingAddress = await queryOne<{ id: string; order_number: string }>(
-        `SELECT o.id, o.order_number FROM orders o
+    // Check if customer is confirming previous address with "yes"
+    const bodyLower = Body.toLowerCase().trim();
+    if (['yes', 'y', 'ok', 'okay', 'confirm', 'same', 'same address'].includes(bodyLower)) {
+      // Check if there's an order waiting for address AND customer has a previous address
+      const orderWithPrevAddress = await queryOne<{ id: string; order_number: string; prev_address: string }>(
+        `SELECT o.id, o.order_number, c.address as prev_address FROM orders o
          JOIN customers c ON o.customer_id = c.id
          WHERE o.customer_id = $1 AND o.pharmacy_id = $2
          AND o.status IN ('ready_for_pickup', 'payment_confirmed', 'confirmed')
-         AND (c.address IS NULL OR c.address = '')
+         AND o.delivery_address IS NULL
+         AND c.address IS NOT NULL AND c.address != ''
+         ORDER BY o.created_at DESC LIMIT 1`,
+        [customer.id, pharmacy.id]
+      );
+
+      if (orderWithPrevAddress) {
+        // Use the previous address for this order
+        await query(
+          `UPDATE orders SET delivery_address = $1 WHERE id = $2`,
+          [orderWithPrevAddress.prev_address, orderWithPrevAddress.id]
+        );
+
+        await query(
+          `UPDATE messages SET order_id = $1 WHERE twilio_sid = $2`,
+          [orderWithPrevAddress.id, MessageSid]
+        );
+
+        logger.info({
+          event: 'customer_address_confirmed',
+          customerId: customer.id,
+          orderId: orderWithPrevAddress.id,
+          usedPreviousAddress: true,
+        });
+
+        return sendTwimlResponse(
+          res,
+          `Great! We'll deliver Order #${orderWithPrevAddress.order_number} to your saved address.\n\nBooking delivery now...`
+        );
+      }
+    }
+
+    // Check if customer is replying with a new address (for delivery)
+    // Address typically has: numbers, commas, pincode pattern
+    const looksLikeAddress = /\d{6}|\d+.*,|flat|house|street|road|sector|block|near/i.test(Body);
+    if (looksLikeAddress && Body.length > 20) {
+      // Check if there's an order waiting for address
+      const orderNeedingAddress = await queryOne<{ id: string; order_number: string }>(
+        `SELECT o.id, o.order_number FROM orders o
+         WHERE o.customer_id = $1 AND o.pharmacy_id = $2
+         AND o.status IN ('ready_for_pickup', 'payment_confirmed', 'confirmed')
+         AND o.delivery_address IS NULL
          ORDER BY o.created_at DESC LIMIT 1`,
         [customer.id, pharmacy.id]
       );
 
       if (orderNeedingAddress) {
-        // Save the address
+        // Save address to the order (not customer - per-order address)
         await query(
-          `UPDATE customers SET address = $1, address_confirmed = true WHERE id = $2`,
+          `UPDATE orders SET delivery_address = $1 WHERE id = $2`,
+          [Body.trim(), orderNeedingAddress.id]
+        );
+
+        // Also update customer's last used address for future reference
+        await query(
+          `UPDATE customers SET address = $1 WHERE id = $2`,
           [Body.trim(), customer.id]
         );
 
@@ -137,20 +183,19 @@ export async function handleIncomingMessage(req: Request, res: Response) {
         );
 
         logger.info({
-          event: 'customer_address_saved',
+          event: 'order_delivery_address_saved',
           customerId: customer.id,
           orderId: orderNeedingAddress.id,
         });
 
         return sendTwimlResponse(
           res,
-          `Thank you! Your delivery address has been saved.\n\nWe'll book the delivery for Order #${orderNeedingAddress.order_number} shortly.`
+          `Thank you! Your delivery address has been saved for Order #${orderNeedingAddress.order_number}.\n\nBooking delivery now...`
         );
       }
     }
 
     // Check for payment confirmation keywords
-    const bodyLower = Body.toLowerCase().trim();
     if (['paid', 'payment done', 'done', 'completed'].includes(bodyLower)) {
       const awaitingPaymentOrder = await queryOne<{ id: string; order_number: string }>(
         `SELECT id, order_number FROM orders

@@ -103,6 +103,9 @@ export const templates = {
   requestAddress: (orderNumber: string) =>
     `To deliver Order #${orderNumber}, we need your delivery address.\n\nPlease reply with your complete address including:\n- House/Flat number\n- Street/Area\n- City, Pincode\n- Landmark (optional)`,
 
+  requestAddressWithPrevious: (orderNumber: string, previousAddress: string) =>
+    `To deliver Order #${orderNumber}, we need your delivery address.\n\nYour last used address:\n${previousAddress}\n\nReply *YES* to use this address, or send a new address.`,
+
   courierAssigned: (orderNumber: string, courierName: string, courierPhone: string) =>
     `Order #${orderNumber} update:\n\n🏍️ Courier assigned!\nName: ${courierName}\nPhone: ${courierPhone}\n\nYour order is being picked up.`,
 

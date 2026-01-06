@@ -98,8 +98,9 @@ export interface OrderDetail extends Order {
     id: string;
     phone: string;
     name: string | null;
-    address: string | null;
+    address: string | null; // Last used address (for reference)
   };
+  deliveryAddress: string | null; // This order's delivery address
   prescriptions: Array<{
     id: string;
     mediaUrl: string;

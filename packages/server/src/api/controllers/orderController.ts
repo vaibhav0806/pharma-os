@@ -151,8 +151,9 @@ export async function getOrder(req: Request, res: Response) {
       id: order.customer_id,
       phone: order.customer_phone,
       name: order.customer_name,
-      address: order.customer_address,
+      address: order.customer_address, // Last used address (for reference)
     },
+    deliveryAddress: order.delivery_address, // This order's delivery address
     status: order.status,
     rawMessage: order.raw_message,
     parsedItems: order.parsed_items,
@@ -297,9 +298,9 @@ export async function updateOrderStatus(req: Request, res: Response) {
                 orderId: order.id,
                 error: deliveryResult.error,
               });
-              // If customer has address, delivery will be retried - tell them it's pending
+              // If order has delivery address, delivery will be retried - tell them it's pending
               // If no address, they'll need to coordinate manually
-              if (order.customer_address) {
+              if (order.delivery_address) {
                 message = templates.orderReadyDeliveryPending(order.order_number);
               } else {
                 message = templates.orderReady(order.order_number);
@@ -522,14 +523,20 @@ export async function requestDeliveryAddress(req: Request, res: Response) {
     return res.status(404).json({ error: 'Order not found' });
   }
 
-  // Check if customer already has address
-  if (order.customer_address) {
-    return res.status(400).json({ error: 'Customer already has an address on file' });
+  // Check if order already has a delivery address
+  if (order.delivery_address) {
+    return res.status(400).json({ error: 'Order already has a delivery address' });
   }
+
+  // Check if customer has a previous address we can offer
+  const previousAddress = order.customer_address;
+  const messageBody = previousAddress
+    ? templates.requestAddressWithPrevious(order.order_number, previousAddress)
+    : templates.requestAddress(order.order_number);
 
   await sendWhatsAppMessage({
     to: order.customer_phone,
-    body: templates.requestAddress(order.order_number),
+    body: messageBody,
     orderId: order.id,
     customerId: order.customer_id,
     pharmacyId: req.user.pharmacyId,
@@ -539,6 +546,7 @@ export async function requestDeliveryAddress(req: Request, res: Response) {
     event: 'delivery_address_requested',
     orderId: order.id,
     customerId: order.customer_id,
+    hasPreviousAddress: !!previousAddress,
   });
 
   return res.json({ success: true, message: 'Address request sent to customer' });
