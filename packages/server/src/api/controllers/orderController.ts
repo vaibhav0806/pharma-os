@@ -13,8 +13,11 @@ import {
   requestPrescription as sendRxRequest,
   sendPaymentDetails,
 } from '../../services/whatsapp/sender';
-import { queryAll } from '../../db/client';
+import { queryAll, queryOne } from '../../db/client';
 import { OrderStatus, statusMessages } from '../../services/order/stateMachine';
+import { bookDeliveryAndNotify, getDeliveryByOrderId, Delivery } from '../../services/delivery/deliveryService';
+import { config } from '../../config';
+import { logger } from '../../utils/logger';
 
 const listOrdersSchema = z.object({
   status: z.enum([
@@ -138,6 +141,9 @@ export async function getOrder(req: Request, res: Response) {
     [order.id]
   );
 
+  // Get delivery info if exists
+  const delivery = await getDeliveryByOrderId(order.id);
+
   return res.json({
     id: order.id,
     orderNumber: order.order_number,
@@ -162,6 +168,18 @@ export async function getOrder(req: Request, res: Response) {
       isValid: p.is_valid,
       createdAt: p.created_at,
     })),
+    delivery: delivery ? {
+      id: delivery.id,
+      status: delivery.status,
+      trackingUrl: delivery.tracking_url,
+      borzoOrderNumber: delivery.borzo_order_number,
+      estimatedPrice: delivery.estimated_price,
+      finalPrice: delivery.final_price,
+      courierName: delivery.courier_name,
+      courierPhone: delivery.courier_phone,
+      createdAt: delivery.created_at,
+      updatedAt: delivery.updated_at,
+    } : null,
     createdAt: order.created_at,
     updatedAt: order.updated_at,
   });
@@ -261,7 +279,29 @@ export async function updateOrderStatus(req: Request, res: Response) {
           message = templates.paymentReceived(order.order_number);
           break;
         case 'ready_for_pickup':
-          message = templates.orderReady(order.order_number);
+          // Try to auto-book delivery if Borzo is enabled
+          if (config.borzo.enabled) {
+            const deliveryResult = await bookDeliveryAndNotify(order.id, req.user.pharmacyId);
+            if (deliveryResult.success) {
+              logger.info({
+                event: 'delivery_auto_booked',
+                orderId: order.id,
+                trackingUrl: deliveryResult.trackingUrl,
+              });
+              // Customer already notified with tracking link by deliveryService
+              message = ''; // Skip default message since delivery service sends tracking
+            } else {
+              // Delivery booking failed, send default ready message
+              logger.warn({
+                event: 'delivery_auto_book_failed',
+                orderId: order.id,
+                error: deliveryResult.error,
+              });
+              message = templates.orderReady(order.order_number);
+            }
+          } else {
+            message = templates.orderReady(order.order_number);
+          }
           break;
         case 'cancelled':
           message = templates.orderCancelled(order.order_number, reason);
@@ -281,7 +321,22 @@ export async function updateOrderStatus(req: Request, res: Response) {
       }
     }
 
-    return res.json({ success: true, order: updated });
+    // Include delivery info in response if available
+    const delivery = await getDeliveryByOrderId(order.id);
+
+    return res.json({
+      success: true,
+      order: updated,
+      delivery: delivery ? {
+        id: delivery.id,
+        status: delivery.status,
+        trackingUrl: delivery.tracking_url,
+        estimatedPrice: delivery.estimated_price,
+        finalPrice: delivery.final_price,
+        courierName: delivery.courier_name,
+        courierPhone: delivery.courier_phone,
+      } : null,
+    });
   } catch (error) {
     if (error instanceof Error && error.message.includes('Invalid transition')) {
       return res.status(400).json({ error: error.message });

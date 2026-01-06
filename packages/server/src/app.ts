@@ -10,6 +10,7 @@ import webhookRoutes from './api/routes/webhook.routes';
 import authRoutes from './api/routes/auth.routes';
 import orderRoutes from './api/routes/order.routes';
 import pharmacyRoutes from './api/routes/pharmacy.routes';
+import deliveryRoutes from './api/routes/delivery.routes';
 
 // Import middleware
 import { errorHandler } from './api/middleware/errorHandler';
@@ -42,6 +43,7 @@ app.use('/api/webhook', webhookRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/orders', orderRoutes);
 app.use('/api/pharmacy', pharmacyRoutes);
+app.use('/api/delivery', deliveryRoutes);
 
 // Error handling
 app.use(errorHandler);

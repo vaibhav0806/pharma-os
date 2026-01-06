@@ -80,6 +80,19 @@ export const getOrders = async (params?: {
   return response.data;
 };
 
+export interface Delivery {
+  id: string;
+  status: 'pending' | 'calculating' | 'quoted' | 'booked' | 'courier_assigned' | 'in_transit' | 'delivered' | 'cancelled' | 'failed';
+  trackingUrl: string | null;
+  borzoOrderNumber: string | null;
+  estimatedPrice: number | null;
+  finalPrice: number | null;
+  courierName: string | null;
+  courierPhone: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface OrderDetail extends Order {
   customer: {
     id: string;
@@ -94,6 +107,7 @@ export interface OrderDetail extends Order {
     isValid: boolean | null;
     createdAt: string;
   }>;
+  delivery: Delivery | null;
 }
 
 export const getOrder = async (id: string) => {
@@ -178,6 +192,32 @@ export const updatePharmacy = async (data: {
   upiId?: string;
 }) => {
   const response = await api.patch('/pharmacy', data);
+  return response.data;
+};
+
+// Delivery
+export interface DeliveryConfig {
+  enabled: boolean;
+  provider: string;
+}
+
+export const getDeliveryConfig = async () => {
+  const response = await api.get<DeliveryConfig>('/delivery/config');
+  return response.data;
+};
+
+export const getDelivery = async (orderId: string) => {
+  const response = await api.get<{ delivery: Delivery | null }>(`/delivery/order/${orderId}`);
+  return response.data;
+};
+
+export const bookDelivery = async (orderId: string) => {
+  const response = await api.post<{ success: boolean; trackingUrl?: string }>('/delivery/book', { orderId });
+  return response.data;
+};
+
+export const cancelDelivery = async (orderId: string) => {
+  const response = await api.delete(`/delivery/order/${orderId}`);
   return response.data;
 };
 

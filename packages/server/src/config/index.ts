@@ -27,6 +27,11 @@ export const config = {
   cors: {
     origin: process.env.CORS_ORIGIN || 'http://localhost:5173',
   },
+
+  borzo: {
+    authToken: process.env.BORZO_AUTH_TOKEN || '',
+    enabled: process.env.BORZO_ENABLED === 'true',
+  },
 };
 
 // Validate required config in production

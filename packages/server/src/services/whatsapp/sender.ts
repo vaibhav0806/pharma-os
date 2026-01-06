@@ -93,6 +93,21 @@ export const templates = {
 
   customMessage: (orderNumber: string, message: string) =>
     `Regarding Order #${orderNumber}:\n\n${message}`,
+
+  deliveryBooked: (orderNumber: string, trackingUrl: string) =>
+    `🚴 Delivery booked for Order #${orderNumber}!\n\nTrack your order here:\n${trackingUrl}\n\nYou'll receive updates as your order is on its way.`,
+
+  requestAddress: (orderNumber: string) =>
+    `To deliver Order #${orderNumber}, we need your delivery address.\n\nPlease reply with your complete address including:\n- House/Flat number\n- Street/Area\n- City, Pincode\n- Landmark (optional)`,
+
+  courierAssigned: (orderNumber: string, courierName: string, courierPhone: string) =>
+    `Order #${orderNumber} update:\n\n🏍️ Courier assigned!\nName: ${courierName}\nPhone: ${courierPhone}\n\nYour order is being picked up.`,
+
+  orderInTransit: (orderNumber: string, trackingUrl: string) =>
+    `Order #${orderNumber} is on the way! 🚴\n\nTrack live: ${trackingUrl}`,
+
+  orderDelivered: (orderNumber: string) =>
+    `✅ Order #${orderNumber} has been delivered!\n\nThank you for ordering with us. Hope to serve you again soon!`,
 };
 
 /**

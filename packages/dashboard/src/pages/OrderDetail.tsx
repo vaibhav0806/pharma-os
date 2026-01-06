@@ -11,6 +11,8 @@ import {
   X,
   Clock,
   CreditCard,
+  Truck,
+  ExternalLink,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import {
@@ -19,6 +21,9 @@ import {
   updateOrderStatus,
   requestPrescription,
   sendMessage,
+  bookDelivery,
+  cancelDelivery,
+  getDeliveryConfig,
   OrderDetail as OrderDetailType,
 } from '../services/api';
 
@@ -48,6 +53,30 @@ const statusLabels: Record<string, string> = {
   cancelled: 'Cancelled',
 };
 
+const deliveryStatusColors: Record<string, string> = {
+  pending: 'bg-gray-100 text-gray-800',
+  calculating: 'bg-yellow-100 text-yellow-800',
+  quoted: 'bg-blue-100 text-blue-800',
+  booked: 'bg-indigo-100 text-indigo-800',
+  courier_assigned: 'bg-purple-100 text-purple-800',
+  in_transit: 'bg-orange-100 text-orange-800',
+  delivered: 'bg-green-100 text-green-800',
+  cancelled: 'bg-red-100 text-red-800',
+  failed: 'bg-red-100 text-red-800',
+};
+
+const deliveryStatusLabels: Record<string, string> = {
+  pending: 'Pending',
+  calculating: 'Calculating Price',
+  quoted: 'Price Quoted',
+  booked: 'Booked',
+  courier_assigned: 'Courier Assigned',
+  in_transit: 'In Transit',
+  delivered: 'Delivered',
+  cancelled: 'Cancelled',
+  failed: 'Failed',
+};
+
 export default function OrderDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -73,6 +102,11 @@ export default function OrderDetail() {
     refetchInterval: 10000, // Refresh every 10 seconds
   });
 
+  const { data: deliveryConfig } = useQuery({
+    queryKey: ['delivery-config'],
+    queryFn: getDeliveryConfig,
+  });
+
   const updateStatusMutation = useMutation({
     mutationFn: (data: Parameters<typeof updateOrderStatus>[1]) =>
       updateOrderStatus(id!, data),
@@ -96,6 +130,20 @@ export default function OrderDetail() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['order-messages', id] });
       setCustomMessage('');
+    },
+  });
+
+  const bookDeliveryMutation = useMutation({
+    mutationFn: () => bookDelivery(id!),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['order', id] });
+    },
+  });
+
+  const cancelDeliveryMutation = useMutation({
+    mutationFn: () => cancelDelivery(id!),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['order', id] });
     },
   });
 
@@ -289,6 +337,116 @@ export default function OrderDetail() {
                   </a>
                 ))}
               </div>
+            </div>
+          )}
+
+          {/* Delivery */}
+          {(order.delivery || deliveryConfig?.enabled) && (
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg font-medium text-gray-900 flex items-center">
+                  <Truck className="w-5 h-5 mr-2" />
+                  Delivery
+                </h2>
+                {order.delivery && (
+                  <span
+                    className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                      deliveryStatusColors[order.delivery.status]
+                    }`}
+                  >
+                    {deliveryStatusLabels[order.delivery.status]}
+                  </span>
+                )}
+              </div>
+
+              {order.delivery ? (
+                <div className="space-y-4">
+                  {/* Tracking URL */}
+                  {order.delivery.trackingUrl && (
+                    <div>
+                      <p className="text-sm text-gray-500 mb-1">Tracking Link</p>
+                      <a
+                        href={order.delivery.trackingUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center text-primary-600 hover:text-primary-700"
+                      >
+                        Track Delivery
+                        <ExternalLink className="w-4 h-4 ml-1" />
+                      </a>
+                    </div>
+                  )}
+
+                  {/* Borzo Order Number */}
+                  {order.delivery.borzoOrderNumber && (
+                    <div>
+                      <p className="text-sm text-gray-500 mb-1">Delivery Order #</p>
+                      <p className="text-gray-900">{order.delivery.borzoOrderNumber}</p>
+                    </div>
+                  )}
+
+                  {/* Courier Info */}
+                  {order.delivery.courierName && (
+                    <div>
+                      <p className="text-sm text-gray-500 mb-1">Courier</p>
+                      <p className="text-gray-900">{order.delivery.courierName}</p>
+                      {order.delivery.courierPhone && (
+                        <p className="text-gray-600">{order.delivery.courierPhone}</p>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Price */}
+                  <div>
+                    <p className="text-sm text-gray-500 mb-1">Delivery Cost</p>
+                    <p className="text-gray-900 font-medium">
+                      Rs. {(order.delivery.finalPrice || order.delivery.estimatedPrice || 0).toFixed(2)}
+                      {order.delivery.estimatedPrice && !order.delivery.finalPrice && (
+                        <span className="text-xs text-gray-500 ml-1">(estimated)</span>
+                      )}
+                    </p>
+                  </div>
+
+                  {/* Cancel Delivery Button */}
+                  {['booked', 'courier_assigned'].includes(order.delivery.status) && (
+                    <button
+                      onClick={() => cancelDeliveryMutation.mutate()}
+                      disabled={cancelDeliveryMutation.isPending}
+                      className="w-full flex items-center justify-center px-4 py-2 border border-red-300 text-red-600 rounded-lg hover:bg-red-50 disabled:opacity-50"
+                    >
+                      <X className="w-4 h-4 mr-2" />
+                      {cancelDeliveryMutation.isPending ? 'Cancelling...' : 'Cancel Delivery'}
+                    </button>
+                  )}
+                </div>
+              ) : (
+                <div className="text-center py-4">
+                  {deliveryConfig?.enabled ? (
+                    <>
+                      <p className="text-gray-500 mb-4">
+                        No delivery booked yet.
+                        {!order.customer.address && (
+                          <span className="block text-sm text-orange-600 mt-1">
+                            Customer address not available.
+                          </span>
+                        )}
+                      </p>
+                      {order.customer.address && ['ready_for_pickup', 'payment_confirmed', 'confirmed'].includes(order.status) && (
+                        <button
+                          onClick={() => bookDeliveryMutation.mutate()}
+                          disabled={bookDeliveryMutation.isPending}
+                          className="inline-flex items-center px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50"
+                        >
+                          <Truck className="w-4 h-4 mr-2" />
+                          {bookDeliveryMutation.isPending ? 'Booking...' : 'Book Delivery'}
+                        </button>
+                      )}
+                    </>
+                  ) : (
+                    <p className="text-gray-500">Delivery service not enabled.</p>
+                  )}
+                </div>
+              )}
             </div>
           )}
 
