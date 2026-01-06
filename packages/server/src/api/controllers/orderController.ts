@@ -100,7 +100,7 @@ export async function listOrders(req: Request, res: Response) {
       requiresRx: o.requires_rx,
       rxVerified: o.rx_verified,
       paymentMethod: o.payment_method,
-      totalAmount: o.total_amount,
+      totalAmount: o.total_amount ? Number(o.total_amount) : null,
       notes: o.notes,
       createdAt: o.created_at,
       updatedAt: o.updated_at,
@@ -159,7 +159,7 @@ export async function getOrder(req: Request, res: Response) {
     requiresRx: order.requires_rx,
     rxVerified: order.rx_verified,
     paymentMethod: order.payment_method,
-    totalAmount: order.total_amount,
+    totalAmount: order.total_amount ? Number(order.total_amount) : null,
     notes: order.notes,
     prescriptions: prescriptions.map((p) => ({
       id: p.id,
@@ -430,7 +430,7 @@ export async function sendPaymentInstructions(req: Request, res: Response) {
   await sendPaymentDetails(
     order.customer_phone,
     order.order_number,
-    order.total_amount,
+    Number(order.total_amount),
     pharmacy.upi_id,
     order.id,
     order.customer_id,

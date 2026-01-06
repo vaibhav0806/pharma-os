@@ -79,7 +79,7 @@ function OrderRow({ order }: { order: Order }) {
             <div className="text-right">
               {order.totalAmount && (
                 <div className="font-medium text-gray-900">
-                  Rs. {order.totalAmount.toFixed(2)}
+                  Rs. {Number(order.totalAmount).toFixed(2)}
                 </div>
               )}
               <div className="text-sm text-gray-500">
