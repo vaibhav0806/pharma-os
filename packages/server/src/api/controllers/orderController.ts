@@ -291,13 +291,19 @@ export async function updateOrderStatus(req: Request, res: Response) {
               // Customer already notified with tracking link by deliveryService
               message = ''; // Skip default message since delivery service sends tracking
             } else {
-              // Delivery booking failed, send default ready message
+              // Delivery booking failed, send appropriate message
               logger.warn({
                 event: 'delivery_auto_book_failed',
                 orderId: order.id,
                 error: deliveryResult.error,
               });
-              message = templates.orderReady(order.order_number);
+              // If customer has address, delivery will be retried - tell them it's pending
+              // If no address, they'll need to coordinate manually
+              if (order.customer_address) {
+                message = templates.orderReadyDeliveryPending(order.order_number);
+              } else {
+                message = templates.orderReady(order.order_number);
+              }
             }
           } else {
             message = templates.orderReady(order.order_number);
@@ -496,8 +502,44 @@ export async function sendCustomMessage(req: Request, res: Response) {
     body: templates.customMessage(order.order_number, message),
     orderId: order.id,
     customerId: order.customer_id,
-    pharmacyId: req.user.pharmacyId,
+    pharmacyId: req.user!.pharmacyId,
   });
 
   return res.json({ success: true });
+}
+
+/**
+ * Request delivery address from customer
+ */
+export async function requestDeliveryAddress(req: Request, res: Response) {
+  if (!req.user) {
+    return res.status(401).json({ error: 'Not authenticated' });
+  }
+
+  const order = await getOrderById(req.params.id, req.user.pharmacyId);
+
+  if (!order) {
+    return res.status(404).json({ error: 'Order not found' });
+  }
+
+  // Check if customer already has address
+  if (order.customer_address) {
+    return res.status(400).json({ error: 'Customer already has an address on file' });
+  }
+
+  await sendWhatsAppMessage({
+    to: order.customer_phone,
+    body: templates.requestAddress(order.order_number),
+    orderId: order.id,
+    customerId: order.customer_id,
+    pharmacyId: req.user.pharmacyId,
+  });
+
+  logger.info({
+    event: 'delivery_address_requested',
+    orderId: order.id,
+    customerId: order.customer_id,
+  });
+
+  return res.json({ success: true, message: 'Address request sent to customer' });
 }

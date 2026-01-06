@@ -170,6 +170,11 @@ export const sendMessage = async (id: string, message: string) => {
   return response.data;
 };
 
+export const requestAddress = async (id: string) => {
+  const response = await api.post(`/orders/${id}/request-address`);
+  return response.data;
+};
+
 // Pharmacy
 export interface Pharmacy {
   id: string;

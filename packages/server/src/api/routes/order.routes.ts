@@ -8,6 +8,7 @@ import {
   sendPaymentInstructions,
   getOrderMessages,
   sendCustomMessage,
+  requestDeliveryAddress,
 } from '../controllers/orderController';
 import { authenticate } from '../middleware/auth';
 
@@ -39,5 +40,8 @@ router.get('/:id/messages', getOrderMessages);
 
 // Send custom message to customer
 router.post('/:id/messages', sendCustomMessage);
+
+// Request delivery address from customer
+router.post('/:id/request-address', requestDeliveryAddress);
 
 export default router;

@@ -24,6 +24,7 @@ import {
   bookDelivery,
   cancelDelivery,
   getDeliveryConfig,
+  requestAddress,
   OrderDetail as OrderDetailType,
 } from '../services/api';
 
@@ -142,6 +143,13 @@ export default function OrderDetail() {
 
   const cancelDeliveryMutation = useMutation({
     mutationFn: () => cancelDelivery(id!),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['order', id] });
+    },
+  });
+
+  const requestAddressMutation = useMutation({
+    mutationFn: () => requestAddress(id!),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['order', id] });
     },
@@ -305,7 +313,7 @@ export default function OrderDetail() {
               <div className="mt-4 pt-4 border-t border-gray-200 flex justify-between items-center">
                 <span className="font-medium text-gray-900">Total</span>
                 <span className="text-lg font-bold text-gray-900">
-                  Rs. {order.totalAmount.toFixed(2)}
+                  Rs. {Number(order.totalAmount).toFixed(2)}
                 </span>
               </div>
             )}
@@ -400,7 +408,7 @@ export default function OrderDetail() {
                   <div>
                     <p className="text-sm text-gray-500 mb-1">Delivery Cost</p>
                     <p className="text-gray-900 font-medium">
-                      Rs. {(order.delivery.finalPrice || order.delivery.estimatedPrice || 0).toFixed(2)}
+                      Rs. {Number(order.delivery.finalPrice || order.delivery.estimatedPrice || 0).toFixed(2)}
                       {order.delivery.estimatedPrice && !order.delivery.finalPrice && (
                         <span className="text-xs text-gray-500 ml-1">(estimated)</span>
                       )}
@@ -431,6 +439,16 @@ export default function OrderDetail() {
                           </span>
                         )}
                       </p>
+                      {!order.customer.address && ['ready_for_pickup', 'payment_confirmed', 'confirmed'].includes(order.status) && (
+                        <button
+                          onClick={() => requestAddressMutation.mutate()}
+                          disabled={requestAddressMutation.isPending}
+                          className="inline-flex items-center px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 disabled:opacity-50 mb-2"
+                        >
+                          <MapPin className="w-4 h-4 mr-2" />
+                          {requestAddressMutation.isPending ? 'Requesting...' : 'Request Address'}
+                        </button>
+                      )}
                       {order.customer.address && ['ready_for_pickup', 'payment_confirmed', 'confirmed'].includes(order.status) && (
                         <button
                           onClick={() => bookDeliveryMutation.mutate()}

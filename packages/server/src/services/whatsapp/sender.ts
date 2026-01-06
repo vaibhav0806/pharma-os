@@ -86,6 +86,9 @@ export const templates = {
   orderReady: (orderNumber: string) =>
     `Order #${orderNumber} is ready!\n\nPlease coordinate with the pharmacy for pickup or delivery.`,
 
+  orderReadyDeliveryPending: (orderNumber: string) =>
+    `Order #${orderNumber} is ready!\n\nWe're arranging delivery for you. You'll receive tracking details shortly.`,
+
   orderCancelled: (orderNumber: string, reason?: string) => {
     const reasonText = reason ? `\n\nReason: ${reason}` : '';
     return `Order #${orderNumber} has been cancelled.${reasonText}\n\nPlease contact us if you have any questions.`;

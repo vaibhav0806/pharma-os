@@ -109,6 +109,46 @@ export async function handleIncomingMessage(req: Request, res: Response) {
       }
     }
 
+    // Check if customer is replying with their address (for delivery)
+    // Address typically has: numbers, commas, pincode pattern
+    const looksLikeAddress = /\d{6}|\d+.*,|flat|house|street|road|sector|block|near/i.test(Body);
+    if (looksLikeAddress && Body.length > 20) {
+      // Check if there's a ready_for_pickup order waiting for address
+      const orderNeedingAddress = await queryOne<{ id: string; order_number: string }>(
+        `SELECT o.id, o.order_number FROM orders o
+         JOIN customers c ON o.customer_id = c.id
+         WHERE o.customer_id = $1 AND o.pharmacy_id = $2
+         AND o.status IN ('ready_for_pickup', 'payment_confirmed', 'confirmed')
+         AND (c.address IS NULL OR c.address = '')
+         ORDER BY o.created_at DESC LIMIT 1`,
+        [customer.id, pharmacy.id]
+      );
+
+      if (orderNeedingAddress) {
+        // Save the address
+        await query(
+          `UPDATE customers SET address = $1, address_confirmed = true WHERE id = $2`,
+          [Body.trim(), customer.id]
+        );
+
+        await query(
+          `UPDATE messages SET order_id = $1 WHERE twilio_sid = $2`,
+          [orderNeedingAddress.id, MessageSid]
+        );
+
+        logger.info({
+          event: 'customer_address_saved',
+          customerId: customer.id,
+          orderId: orderNeedingAddress.id,
+        });
+
+        return sendTwimlResponse(
+          res,
+          `Thank you! Your delivery address has been saved.\n\nWe'll book the delivery for Order #${orderNeedingAddress.order_number} shortly.`
+        );
+      }
+    }
+
     // Check for payment confirmation keywords
     const bodyLower = Body.toLowerCase().trim();
     if (['paid', 'payment done', 'done', 'completed'].includes(bodyLower)) {
