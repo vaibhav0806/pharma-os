@@ -287,17 +287,17 @@ export async function bookDeliveryAndNotify(
     id: string;
     order_number: string;
     customer_id: string;
+    delivery_address: string | null;
     customer_phone: string;
     customer_name: string | null;
-    customer_address: string | null;
     pharmacy_name: string;
     pharmacy_address: string | null;
     pharmacy_phone: string;
     pharmacy_pickup_address: string | null;
     pharmacy_contact_name: string | null;
   }>(
-    `SELECT o.id, o.order_number, o.customer_id,
-            c.phone as customer_phone, c.name as customer_name, c.address as customer_address,
+    `SELECT o.id, o.order_number, o.customer_id, o.delivery_address,
+            c.phone as customer_phone, c.name as customer_name,
             p.name as pharmacy_name, p.address as pharmacy_address, p.phone as pharmacy_phone,
             p.pickup_address as pharmacy_pickup_address, p.contact_name as pharmacy_contact_name
      FROM orders o
@@ -311,9 +311,9 @@ export async function bookDeliveryAndNotify(
     return { success: false, error: 'Order not found' };
   }
 
-  // Check if customer has address
-  if (!order.customer_address) {
-    return { success: false, error: 'Customer address not available. Please ask customer for delivery address.' };
+  // Check if order has delivery address
+  if (!order.delivery_address) {
+    return { success: false, error: 'Delivery address not set. Please request address from customer.' };
   }
 
   // Check if pharmacy has pickup address
@@ -340,7 +340,7 @@ export async function bookDeliveryAndNotify(
         pickupAddress,
         pickupPhone: order.pharmacy_phone,
         pickupContactName: order.pharmacy_contact_name || order.pharmacy_name,
-        deliveryAddress: order.customer_address,
+        deliveryAddress: order.delivery_address!,
         deliveryPhone: order.customer_phone,
         deliveryContactName: order.customer_name || undefined,
       });

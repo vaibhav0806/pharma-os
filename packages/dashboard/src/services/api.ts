@@ -98,8 +98,9 @@ export interface OrderDetail extends Order {
     id: string;
     phone: string;
     name: string | null;
-    address: string | null;
+    address: string | null; // Last used address (for reference)
   };
+  deliveryAddress: string | null; // This order's delivery address
   prescriptions: Array<{
     id: string;
     mediaUrl: string;
@@ -167,6 +168,11 @@ export const getOrderMessages = async (id: string) => {
 
 export const sendMessage = async (id: string, message: string) => {
   const response = await api.post(`/orders/${id}/messages`, { message });
+  return response.data;
+};
+
+export const requestAddress = async (id: string) => {
+  const response = await api.post(`/orders/${id}/request-address`);
   return response.data;
 };
 

@@ -24,6 +24,8 @@ import {
   bookDelivery,
   cancelDelivery,
   getDeliveryConfig,
+  requestAddress,
+  OrderDetail as OrderDetailType,
 } from '../services/api';
 
 const statusColors: Record<string, string> = {
@@ -141,6 +143,13 @@ export default function OrderDetail() {
 
   const cancelDeliveryMutation = useMutation({
     mutationFn: () => cancelDelivery(id!),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['order', id] });
+    },
+  });
+
+  const requestAddressMutation = useMutation({
+    mutationFn: () => requestAddress(id!),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['order', id] });
     },
@@ -424,13 +433,28 @@ export default function OrderDetail() {
                     <>
                       <p className="text-gray-500 mb-4">
                         No delivery booked yet.
-                        {!order.customer.address && (
+                        {!order.deliveryAddress && (
                           <span className="block text-sm text-orange-600 mt-1">
-                            Customer address not available.
+                            Delivery address not set for this order.
                           </span>
                         )}
                       </p>
-                      {order.customer.address && ['ready_for_pickup', 'payment_confirmed', 'confirmed'].includes(order.status) && (
+                      {order.deliveryAddress && (
+                        <p className="text-sm text-gray-600 mb-3 bg-gray-50 p-2 rounded">
+                          <span className="font-medium">Delivery to:</span> {order.deliveryAddress}
+                        </p>
+                      )}
+                      {!order.deliveryAddress && ['ready_for_pickup', 'payment_confirmed', 'confirmed'].includes(order.status) && (
+                        <button
+                          onClick={() => requestAddressMutation.mutate()}
+                          disabled={requestAddressMutation.isPending}
+                          className="inline-flex items-center px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 disabled:opacity-50 mb-2"
+                        >
+                          <MapPin className="w-4 h-4 mr-2" />
+                          {requestAddressMutation.isPending ? 'Requesting...' : 'Request Address'}
+                        </button>
+                      )}
+                      {order.deliveryAddress && ['ready_for_pickup', 'payment_confirmed', 'confirmed'].includes(order.status) && (
                         <button
                           onClick={() => bookDeliveryMutation.mutate()}
                           disabled={bookDeliveryMutation.isPending}

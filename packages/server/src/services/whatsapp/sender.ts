@@ -86,6 +86,9 @@ export const templates = {
   orderReady: (orderNumber: string) =>
     `Order #${orderNumber} is ready!\n\nPlease coordinate with the pharmacy for pickup or delivery.`,
 
+  orderReadyDeliveryPending: (orderNumber: string) =>
+    `Order #${orderNumber} is ready!\n\nWe're arranging delivery for you. You'll receive tracking details shortly.`,
+
   orderCancelled: (orderNumber: string, reason?: string) => {
     const reasonText = reason ? `\n\nReason: ${reason}` : '';
     return `Order #${orderNumber} has been cancelled.${reasonText}\n\nPlease contact us if you have any questions.`;
@@ -99,6 +102,9 @@ export const templates = {
 
   requestAddress: (orderNumber: string) =>
     `To deliver Order #${orderNumber}, we need your delivery address.\n\nPlease reply with your complete address including:\n- House/Flat number\n- Street/Area\n- City, Pincode\n- Landmark (optional)`,
+
+  requestAddressWithPrevious: (orderNumber: string, previousAddress: string) =>
+    `To deliver Order #${orderNumber}, we need your delivery address.\n\nYour last used address:\n${previousAddress}\n\nReply *YES* to use this address, or send a new address.`,
 
   courierAssigned: (orderNumber: string, courierName: string, courierPhone: string) =>
     `Order #${orderNumber} update:\n\n🏍️ Courier assigned!\nName: ${courierName}\nPhone: ${courierPhone}\n\nYour order is being picked up.`,

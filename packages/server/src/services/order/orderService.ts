@@ -16,6 +16,7 @@ export interface Order {
   payment_method: 'upi' | 'cod' | null;
   total_amount: number | null;
   notes: string | null;
+  delivery_address: string | null;
   created_at: Date;
   updated_at: Date;
 }
