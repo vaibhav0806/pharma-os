@@ -27,6 +27,7 @@ import {
   requestAddress,
   OrderDetail as OrderDetailType,
 } from '../services/api';
+import AuthenticatedImage from '../components/AuthenticatedImage';
 
 const statusColors: Record<string, string> = {
   pending: 'bg-yellow-100 text-yellow-800 border-yellow-200',
@@ -327,14 +328,11 @@ export default function OrderDetail() {
               </h2>
               <div className="grid grid-cols-2 gap-4">
                 {order.prescriptions.map((rx) => (
-                  <a
+                  <div
                     key={rx.id}
-                    href={rx.mediaUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
                     className="block border border-gray-200 rounded-lg overflow-hidden hover:border-primary-500 transition-colors"
                   >
-                    <img
+                    <AuthenticatedImage
                       src={rx.mediaUrl}
                       alt="Prescription"
                       className="w-full h-48 object-cover"
@@ -342,7 +340,7 @@ export default function OrderDetail() {
                     <div className="p-2 text-center text-sm text-gray-500">
                       {format(new Date(rx.createdAt), 'PPp')}
                     </div>
-                  </a>
+                  </div>
                 ))}
               </div>
             </div>
