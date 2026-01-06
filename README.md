@@ -7,6 +7,7 @@ WhatsApp-based operating system for local pharmacies to manage orders, prescript
 - **Backend:** Node.js + TypeScript + Express
 - **Database:** PostgreSQL
 - **WhatsApp:** Twilio API
+- **Delivery:** Borzo API
 - **Dashboard:** React + Vite + Tailwind CSS
 
 ## Getting Started
@@ -16,6 +17,7 @@ WhatsApp-based operating system for local pharmacies to manage orders, prescript
 - Node.js 18+
 - PostgreSQL 14+
 - Twilio account with WhatsApp sandbox enabled
+- Borzo account (optional, for automated delivery)
 - ngrok (for local development)
 
 ### 1. Clone and Install
@@ -42,6 +44,10 @@ TWILIO_AUTH_TOKEN=your_auth_token
 TWILIO_WHATSAPP_NUMBER=+14155238886
 BASE_URL=https://your-ngrok-url.ngrok.io
 JWT_SECRET=your-secret-key
+
+# Optional: Borzo delivery integration
+BORZO_AUTH_TOKEN=your_borzo_api_token
+BORZO_ENABLED=true
 ```
 
 ### 3. Set Up Database
@@ -130,7 +136,7 @@ pharma-os/
 4. **Pharmacist confirms availability** → Sets price & payment method
 5. **Bot sends payment instructions** (UPI) or confirms COD
 6. **Pharmacist confirms payment** → Marks order ready
-7. **Bot notifies customer** → Manual delivery coordination
+7. **Delivery auto-booked via Borzo** → Customer receives tracking link
 
 ## API Endpoints
 
@@ -154,6 +160,13 @@ pharma-os/
 ### Pharmacy
 - `GET /api/pharmacy` - Get settings
 - `PATCH /api/pharmacy` - Update settings
+
+### Delivery
+- `GET /api/delivery/config` - Get delivery config
+- `GET /api/delivery/order/:orderId` - Get delivery for order
+- `POST /api/delivery/book` - Book delivery
+- `DELETE /api/delivery/order/:orderId` - Cancel delivery
+- `POST /api/delivery/webhook/borzo` - Borzo status webhook
 
 ## License
 
