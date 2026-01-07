@@ -33,6 +33,7 @@ const listOrdersSchema = z.object({
     'cancelled',
   ]).optional(),
   search: z.string().optional(),
+  timeRange: z.enum(['3h', '24h', '72h', '1w', '1m', 'all']).optional(),
   page: z.coerce.number().min(1).default(1),
   limit: z.coerce.number().min(1).max(100).default(20),
 });

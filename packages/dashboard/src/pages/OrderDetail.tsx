@@ -90,18 +90,20 @@ export default function OrderDetail() {
   const [customMessage, setCustomMessage] = useState('');
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [showCancelModal, setShowCancelModal] = useState(false);
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
 
   const { data: order, isLoading } = useQuery({
     queryKey: ['order', id],
     queryFn: () => getOrder(id!),
     enabled: !!id,
+    refetchInterval: 3000, // Poll for order updates (status, prescriptions) every 3s
   });
 
   const { data: messagesData } = useQuery({
     queryKey: ['order-messages', id],
     queryFn: () => getOrderMessages(id!),
     enabled: !!id,
-    refetchInterval: 10000, // Refresh every 10 seconds
+    refetchInterval: 3000, // Refresh every 3 seconds for near real-time updates
   });
 
   const { data: deliveryConfig } = useQuery({
@@ -330,7 +332,8 @@ export default function OrderDetail() {
                 {order.prescriptions.map((rx) => (
                   <div
                     key={rx.id}
-                    className="block border border-gray-200 rounded-lg overflow-hidden hover:border-primary-500 transition-colors"
+                    className="block border border-gray-200 rounded-lg overflow-hidden hover:border-primary-500 transition-colors cursor-pointer"
+                    onClick={() => setSelectedImage(rx.mediaUrl)}
                   >
                     <AuthenticatedImage
                       src={rx.mediaUrl}
@@ -490,6 +493,15 @@ export default function OrderDetail() {
                         : 'bg-gray-100 text-gray-900'
                     }`}
                   >
+                    {msg.mediaUrl && (
+                       <div className="mb-2 rounded-lg overflow-hidden cursor-pointer" onClick={() => setSelectedImage(msg.mediaUrl)}>
+                         <AuthenticatedImage
+                           src={msg.mediaUrl}
+                           alt="Message attachment"
+                           className="max-w-full h-auto max-h-48 object-cover"
+                         />
+                       </div>
+                    )}
                     <p className="whitespace-pre-wrap">{msg.body}</p>
                     <p
                       className={`text-xs mt-1 ${
@@ -539,6 +551,17 @@ export default function OrderDetail() {
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
             <h2 className="text-lg font-medium text-gray-900 mb-4">Actions</h2>
 
+            {order.status === 'completed' ? (
+              <div className="bg-green-50 border border-green-200 rounded-lg p-4 flex flex-col items-center text-center">
+                <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mb-3">
+                  <Check className="w-6 h-6 text-green-600" />
+                </div>
+                <h3 className="text-green-800 font-medium mb-1">Order Completed</h3>
+                <p className="text-green-600 text-sm">
+                  All actions have been completed for this order.
+                </p>
+              </div>
+            ) : (
             <div className="space-y-3">
               {actions.includes('start_review') && (
                 <button
@@ -635,6 +658,7 @@ export default function OrderDetail() {
                 </button>
               )}
             </div>
+            )}
           </div>
 
           {/* Order notes */}
@@ -755,6 +779,24 @@ export default function OrderDetail() {
                 {updateStatusMutation.isPending ? 'Cancelling...' : 'Cancel Order'}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+      {/* Image Preview Modal */}
+      {selectedImage && (
+        <div className="fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center z-50 p-4" onClick={() => setSelectedImage(null)}>
+          <button
+            onClick={() => setSelectedImage(null)}
+            className="absolute top-4 right-4 text-white hover:text-gray-300 p-2"
+          >
+            <X className="w-8 h-8" />
+          </button>
+          <div className="max-w-4xl max-h-full overflow-auto" onClick={(e) => e.stopPropagation()}>
+             <AuthenticatedImage
+               src={selectedImage}
+               alt="Preview"
+               className="max-w-full max-h-[90vh] object-contain rounded-lg"
+             />
           </div>
         </div>
       )}

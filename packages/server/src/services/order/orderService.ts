@@ -50,6 +50,7 @@ export interface OrderFilters {
   status?: OrderStatus;
   customerId?: string;
   search?: string;
+  timeRange?: '3h' | '24h' | '72h' | '1w' | '1m' | 'all';
   page?: number;
   limit?: number;
 }
@@ -129,7 +130,7 @@ export async function getOrderByNumber(
 export async function listOrders(
   filters: OrderFilters
 ): Promise<{ orders: OrderWithCustomer[]; total: number }> {
-  const { pharmacyId, status, customerId, search, page = 1, limit = 20 } = filters;
+  const { pharmacyId, status, customerId, search, timeRange, page = 1, limit = 20 } = filters;
   const offset = (page - 1) * limit;
 
   const conditions: string[] = ['o.pharmacy_id = $1'];
@@ -154,6 +155,28 @@ export async function listOrders(
     );
     params.push(`%${search}%`);
     paramIndex++;
+  }
+
+  if (timeRange && timeRange !== 'all') {
+    let interval = '24 hours';
+    switch (timeRange) {
+      case '3h':
+        interval = '3 hours';
+        break;
+      case '24h':
+        interval = '24 hours';
+        break;
+      case '72h':
+        interval = '72 hours';
+        break;
+      case '1w':
+        interval = '1 week';
+        break;
+      case '1m':
+        interval = '1 month';
+        break;
+    }
+    conditions.push(`o.created_at >= NOW() - INTERVAL '${interval}'`);
   }
 
   const whereClause = conditions.join(' AND ');

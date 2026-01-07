@@ -73,6 +73,7 @@ export interface OrdersResponse {
 export const getOrders = async (params?: {
   status?: string;
   search?: string;
+  timeRange?: string;
   page?: number;
   limit?: number;
 }) => {

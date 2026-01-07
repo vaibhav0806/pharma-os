@@ -42,6 +42,15 @@ const statusFilters = [
   { value: 'cancelled', label: 'Cancelled' },
 ];
 
+const timeFilters = [
+  { value: '3h', label: 'Last 3 Hours' },
+  { value: '24h', label: 'Last 24 Hours' },
+  { value: '72h', label: 'Last 3 Days' },
+  { value: '1w', label: 'Last Week' },
+  { value: '1m', label: 'Last Month' },
+  { value: 'all', label: 'All Time' },
+];
+
 function OrderRow({ order }: { order: Order }) {
   return (
     <Link
@@ -107,17 +116,20 @@ function OrderRow({ order }: { order: Order }) {
 export default function Orders() {
   const [status, setStatus] = useState('');
   const [search, setSearch] = useState('');
+  const [timeRange, setTimeRange] = useState('24h');
   const [page, setPage] = useState(1);
 
   const { data, isLoading, error } = useQuery({
-    queryKey: ['orders', { status, search, page }],
+    queryKey: ['orders', { status, search, timeRange, page }],
     queryFn: () =>
       getOrders({
         status: status || undefined,
         search: search || undefined,
+        timeRange,
         page,
         limit: 20,
       }),
+    refetchInterval: 5000, // Poll every 5 seconds for real-time updates
   });
 
   return (
@@ -154,6 +166,22 @@ export default function Orders() {
             className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
           >
             {statusFilters.map((filter) => (
+              <option key={filter.value} value={filter.value}>
+                {filter.label}
+              </option>
+            ))}
+          </select>
+
+          {/* Time filter */}
+          <select
+            value={timeRange}
+            onChange={(e) => {
+              setTimeRange(e.target.value);
+              setPage(1);
+            }}
+            className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+          >
+            {timeFilters.map((filter) => (
               <option key={filter.value} value={filter.value}>
                 {filter.label}
               </option>
