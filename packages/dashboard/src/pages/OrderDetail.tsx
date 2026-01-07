@@ -96,6 +96,7 @@ export default function OrderDetail() {
     queryKey: ['order', id],
     queryFn: () => getOrder(id!),
     enabled: !!id,
+    refetchInterval: 3000, // Poll for order updates (status, prescriptions) every 3s
   });
 
   const { data: messagesData } = useQuery({
